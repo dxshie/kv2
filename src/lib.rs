@@ -192,9 +192,9 @@ fn skip_comments_and_whitespace(input: &str) -> IResult<&str, ()> {
     )(input)
 }
 
-fn ws<'a, F: 'a, O>(inner: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
+fn ws<'a, F, O>(inner: F) -> impl Fn(&'a str) -> IResult<&'a str, O>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O>,
+    F: 'a + Fn(&'a str) -> IResult<&'a str, O>,
 {
     move |input: &str| {
         let (input, _) = skip_comments_and_whitespace(input)?;
