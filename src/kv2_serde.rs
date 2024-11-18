@@ -3,7 +3,7 @@ use serde::{forward_to_deserialize_any, Deserialize};
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::{parse_kv2, KV2Object, KV2Value};
+use crate::{KV2Object, KV2Value};
 
 impl<'de> Deserializer<'de> for KV2Object {
     type Error = de::value::Error;
@@ -199,17 +199,4 @@ impl<'de> Deserialize<'de> for KV2Value {
 
         deserializer.deserialize_any(KV2ValueVisitor)
     }
-}
-
-pub fn serde_kv2<'de, T>(input: &'de str) -> Result<T, Box<dyn std::error::Error + 'de>>
-where
-    T: Deserialize<'de>,
-{
-    // Parse the KV2 data
-    let (_, parsed_kv2) = parse_kv2(input)?;
-
-    // Deserialize directly into the target struct
-    let result: T = T::deserialize(parsed_kv2)?;
-
-    Ok(result)
 }

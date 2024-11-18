@@ -1,6 +1,6 @@
 [package]
 name = "kv2"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["dxshie <dxshie@revision.pub>"]
 description = "kv2 (keyvalues 2) format parser with serde support"
@@ -17,3 +17,6 @@ serde = ["dep:serde"]
 serde = { version = "1", features = ["derive"], optional = true }
 nom = { version = "7" }
 log = "0.4"
+
+[build-dependencies]
+env_logger = "0.11"

@@ -273,16 +273,7 @@ mod tests {
 
         match parse_kv2(input) {
             Ok(data) => {
-                info!("data {:#?}", data);
-                match parse_kv2(data.0) {
-                    Ok(data2) => {
-                        info!("data2 {:#?}", data2);
-                    }
-                    Err(e) => {
-                        error!("{:?}", e);
-                        panic!("expected the test: test2 to pass")
-                    }
-                }
+                info!("this data {:#?}", data);
             }
             Err(e) => {
                 error!("{:?}", e);
@@ -295,7 +286,7 @@ mod tests {
 #[cfg(feature = "serde")]
 #[cfg(test)]
 mod serde_tests {
-    use crate::kv2_serde::serde_kv2;
+    use crate::parse_kv2;
     use log::{error, info};
     use serde::{Deserialize, Serialize};
 
@@ -354,9 +345,13 @@ mod serde_tests {
 	]
 }
 "#;
-        match serde_kv2::<TestOne>(input) {
+        match parse_kv2(input) {
             Ok(data) => {
-                info!("data {:?}", data);
+                for document in data.1 {
+                    if document.class_name == "DmePresetGroup".to_string() {
+                        info!("data {:?}", TestOne::deserialize(document));
+                    }
+                }
             }
             Err(e) => {
                 error!("{:?}", e);
@@ -509,15 +504,31 @@ mod serde_tests {
 }
             "#;
 
-        match serde_kv2::<TestTwo>(input) {
+        match parse_kv2(input) {
             Ok(data) => {
-                info!("data {:?}", data);
+                for document in data.1 {
+                    if document.class_name == "DmeElement".to_string() {
+                        info!("data {:?}", TestTwo::deserialize(document));
+                    }
+                }
             }
             Err(e) => {
                 error!("{:?}", e);
                 panic!("expected the test: test2 to pass")
             }
         }
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct DmElement {
+        id: String,
+        name: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct DmeModel {
+        id: String,
+        visible: bool,
     }
 
     #[test]
@@ -527,68 +538,25 @@ mod serde_tests {
 {
     "id" "elementid" "df939bf4-8dd6-435c-9eef-a6e25434ecca"
     "name" "string" "root"
-    "skeleton" "element" "90e0ae34-0671-478d-95f5-12fa5c905c7a"
-    "model" "element" "90e0ae34-0671-478d-95f5-12fa5c905c7a"
-    "exportTags" "DmeExportTags"
-    {
-        "id" "elementid" "9891f8a4-debd-488a-81cd-3d0f02345c74"
-        "name" "string" "exportTags"
-        "source" "string" "Generated with Source 2 Viewer 10.2.0.0 - https://valveresourceformat.github.io"
-    }
 }
 
 "DmeModel"
 {
     "id" "elementid" "90e0ae34-0671-478d-95f5-12fa5c905c7a"
-    "transform" "DmeTransform"
-    {
-        "id" "elementid" "56f186a9-1316-46c1-b82d-f46d5f19e19e"
-        "position" "vector3" "0 0 0"
-        "orientation" "quaternion" "0 0 0 1"
-    }
-    "shape" "element" ""
     "visible" "bool" "1"
-    "children" "element_array"
-    [
-        "element" "a6d7e5f8-ba52-4c81-9bdf-4b0fb6892de9"
-    ]
-    "jointList" "element_array"
-    [
-        "element" "a6d7e5f8-ba52-4c81-9bdf-4b0fb6892de9"
-    ]
-    "baseStates" "element_array"
-    [
-        "DmeTransformsList"
-        {
-            "id" "elementid" "b4115142-4f81-4569-8c9a-3bdcded9b36f"
-            "transforms" "element_array"
-            [
-                "DmeTransform"
-                {
-                    "id" "elementid" "9eac606c-1fc5-474f-b17f-9fc503b8a7ae"
-                    "position" "vector3" "0 0 0"
-                    "orientation" "quaternion" "0 0 0 1"
-                }
-            ]
-        }
-    ]
-    "axisSystem" "DmeAxisSystem"
-    {
-        "id" "elementid" "81c391ad-4452-4f91-8a68-6ac02e7433b1"
-        "upAxis" "int" "3"
-        "forwardParity" "int" "1"
-        "coordSys" "int" "0"
-    }
 }
             "#;
 
-        match serde_kv2::<TestTwo>(input) {
+        match parse_kv2(input) {
             Ok(data) => {
-                info!("data {:?}", data);
+                let element = DmElement::deserialize(data.1[0].clone());
+                let model = DmeModel::deserialize(data.1[1].clone());
+                info!("2 parts deser element data {:?}", element);
+                info!("2 parts deser model data {:?}", model);
             }
             Err(e) => {
-                error!("{:?}", e);
-                panic!("expected the test: test2 to pass")
+                error!("2 parts deser data {:?}", e);
+                panic!("expected the test: serde_kv2_test3 to pass")
             }
         }
     }

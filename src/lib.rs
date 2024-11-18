@@ -1,3 +1,29 @@
+//! # KV2
+//!
+//! KV2 (KeyValues2) is a key value format created by valve
+//! this crates handles serde support and parsing of that format in rust
+//!
+//! # Example
+//! ```rust
+//! use kv2::parse_kv2;
+//!
+//! let input = r#"
+//! "DmElement"
+//! {
+//! "id" "elementid" "df939bf4-8dd6-435c-9eef-a6e25434ecca"
+//! "name" "string" "root"
+//! }
+//! "#;
+//!
+//! match parse_kv2(input) {
+//!   Ok(data) => {
+//!     println!("{:?}", data);
+//!   }
+//!   Err(e) => {
+//!     println!("{:?}", e);
+//!   }
+//! }
+//! ```
 #[cfg(feature = "serde")]
 pub mod kv2_serde;
 
@@ -33,7 +59,7 @@ pub enum KV2Value {
 }
 
 #[cfg(feature = "serde")]
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum KV2Value {
     Bool(bool),
     Int(i64),
@@ -46,7 +72,7 @@ pub enum KV2Value {
 }
 
 #[cfg(feature = "serde")]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KV2Object {
     pub class_name: String,
     pub fields: HashMap<String, KV2Value>,
@@ -59,18 +85,29 @@ pub struct KV2Object {
     pub fields: HashMap<String, KV2Value>,
 }
 
-pub fn parse_kv2(input: &str) -> IResult<&str, KV2Object> {
-    info!("Parsing KV2 root...");
+pub fn parse_kv2(input: &str) -> IResult<&str, Vec<KV2Object>> {
+    info!("Parsing KV2 document...");
 
     let (input, _) = skip_comments_and_whitespace(input)?;
 
     // Parse optional XML-style comment at the top
     let (input, _) = opt(parse_comment)(input)?;
 
+    // Parse multiple root objects
+    let (input, objects) = many0(ws(parse_root_object))(input)?;
+
+    Ok((input, objects))
+}
+
+fn parse_root_object(input: &str) -> IResult<&str, KV2Object> {
+    info!("Parsing KV2 root object...");
+
+    let (input, _) = skip_comments_and_whitespace(input)?;
+
     // Parse the root class name
     let (input, class_name) = ws(parse_quoted_string)(input)?;
 
-    // Parse the main object body
+    // Parse the object body
     let (input, fields) = parse_object_body(input)?;
 
     Ok((input, KV2Object { class_name, fields }))
