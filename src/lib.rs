@@ -26,6 +26,7 @@ pub enum KV2Value {
     Int(i64),
     Double(f64),
     Vector(Vec<f64>),
+    Quaternion(Vec<f64>),
     String(String),
     Array(Vec<KV2Value>),
     Object(KV2Object),
@@ -38,6 +39,7 @@ pub enum KV2Value {
     Int(i64),
     Double(f64),
     Vector(Vec<f64>),
+    Quaternion(Vec<f64>),
     String(String),
     Array(Vec<KV2Value>),
     Object(KV2Object),
@@ -110,6 +112,12 @@ fn parse_key_value(input: &str) -> IResult<&str, (String, KV2Value)> {
                 Err(_) => KV2Value::String(value_str), // Fallback to string if parsing fails
             }
         }
+        "quaternion" => {
+            match parse_quaternion(value_str.as_str()) {
+                Ok(vector) => KV2Value::Quaternion(vector),
+                Err(_) => KV2Value::String(value_str), // Fallback to string if parsing fails
+            }
+        }
         // Handle other data types as needed
         _ => KV2Value::String(value_str), // Default to string
     };
@@ -120,24 +128,95 @@ fn parse_vector(input: &str) -> Result<Vec<f64>, std::num::ParseFloatError> {
     input.split_whitespace().map(|s| s.parse::<f64>()).collect()
 }
 
+fn parse_quaternion(input: &str) -> Result<Vec<f64>, std::num::ParseFloatError> {
+    input.split_whitespace().map(|s| s.parse::<f64>()).collect()
+}
+
 fn parse_array(input: &str) -> IResult<&str, (String, KV2Value)> {
     info!("Parsing array...");
     let (input, key) = ws(parse_quoted_string)(input)?;
     let (input, data_type) = ws(parse_quoted_string)(input)?;
 
-    if data_type != "element_array" {
+    // Check if data_type ends with "_array"
+    if !data_type.ends_with("_array") {
         return Err(nom::Err::Error(nom::error::Error::new(
             input,
             nom::error::ErrorKind::Tag,
         )));
     }
 
+    // Extract the base data type (e.g., "vector3" from "vector3_array")
+    let base_data_type = &data_type[..data_type.len() - "_array".len()];
+
     let (input, _) = ws(tag("["))(input)?;
-    // Use separated_list0 to handle commas between elements
-    let (input, elements) = separated_list0(ws(tag(",")), ws(parse_element))(input)?;
+    // Handle commas between elements and parse elements based on base_data_type
+    let (input, elements) =
+        separated_list0(ws(tag(",")), |i| parse_array_element(i, base_data_type))(input)?;
     let (input, _) = ws(tag("]"))(input)?;
 
     Ok((input, (key, KV2Value::Array(elements))))
+}
+
+fn parse_array_element<'a>(input: &'a str, base_data_type: &str) -> IResult<&'a str, KV2Value> {
+    match base_data_type {
+        "element" => {
+            // Elements can be objects or key-value pairs
+            alt((parse_element, parse_array_key_value))(input)
+        }
+        _ => {
+            // For other types, parse the element value according to the base data type
+            parse_array_value(input, base_data_type)
+        }
+    }
+}
+
+fn parse_array_value<'a>(input: &'a str, data_type: &str) -> IResult<&'a str, KV2Value> {
+    info!("Parsing array value of type {}", data_type);
+
+    // Parse the value as a quoted string
+    let (input, value_str) = ws(parse_quoted_string)(input)?;
+
+    let value = match data_type {
+        "bool" => KV2Value::Bool(value_str == "1" || value_str.to_lowercase() == "true"),
+        "int" | "int32" | "int64" => KV2Value::Int(value_str.parse::<i64>().unwrap_or(0)),
+        "float" => KV2Value::Double(value_str.parse::<f64>().unwrap_or(0.0)),
+        "string" => KV2Value::String(value_str),
+        "vector3" => {
+            match parse_vector(&value_str) {
+                Ok(vector) => KV2Value::Vector(vector),
+                Err(_) => KV2Value::String(value_str), // Fallback to string
+            }
+        }
+        "quaternion" => {
+            match parse_quaternion(value_str.as_str()) {
+                Ok(vector) => KV2Value::Quaternion(vector),
+                Err(_) => KV2Value::String(value_str), // Fallback to string if parsing fails
+            }
+        }
+        // Add more data types as needed
+        _ => KV2Value::String(value_str), // Default to string
+    };
+
+    Ok((input, value))
+}
+
+fn parse_array_key_value(input: &str) -> IResult<&str, KV2Value> {
+    info!("Parsing array key-value pair...");
+
+    let (input, key) = ws(parse_quoted_string)(input)?;
+    let (input, value) = ws(parse_quoted_string)(input)?;
+
+    // Represent the key-value pair as an object with a single field
+    let mut fields = HashMap::new();
+    fields.insert(key, KV2Value::String(value));
+
+    Ok((
+        input,
+        KV2Value::Object(KV2Object {
+            class_name: String::new(), // No class name
+            fields,
+        }),
+    ))
 }
 
 fn parse_element(input: &str) -> IResult<&str, KV2Value> {

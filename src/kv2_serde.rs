@@ -117,6 +117,9 @@ impl<'de> Deserializer<'de> for KV2Value {
             KV2Value::Vector(v) => visitor.visit_seq(KV2VectorSeqAccess {
                 iter: v.into_iter(),
             }),
+            KV2Value::Quaternion(v) => visitor.visit_seq(KV2VectorSeqAccess {
+                iter: v.into_iter(),
+            }),
         }
     }
 
