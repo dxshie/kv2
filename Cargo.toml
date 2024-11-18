@@ -1,6 +1,6 @@
 [package]
 name = "kv2"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["dxshie <dxshie@revision.pub>"]
 description = "kv2 (keyvalues 2) format parser with serde support"
