@@ -348,7 +348,7 @@ mod serde_tests {
         match parse_kv2(input) {
             Ok(data) => {
                 for document in data.1 {
-                    if document.class_name == "DmePresetGroup".to_string() {
+                    if document.class_name == "DmePresetGroup" {
                         info!("data {:?}", TestOne::deserialize(document));
                     }
                 }
@@ -507,7 +507,7 @@ mod serde_tests {
         match parse_kv2(input) {
             Ok(data) => {
                 for document in data.1 {
-                    if document.class_name == "DmeElement".to_string() {
+                    if document.class_name == "DmeElement" {
                         info!("data {:?}", TestTwo::deserialize(document));
                     }
                 }
